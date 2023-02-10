@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 group 'edu.utcn.ipprrg'
@@ -13,6 +14,10 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
     implementation 'org.orekit:orekit:11.3.1'
+}
+
+application {
+    mainClass = 'edu.utcn.ipprrg.Main'
 }
 
 test {
