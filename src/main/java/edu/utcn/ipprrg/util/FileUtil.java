@@ -1,11 +1,15 @@
 package edu.utcn.ipprrg.util;
 
+import edu.utcn.ipprrg.proc.InputData;
 import org.orekit.data.DataContext;
 import org.orekit.data.DataProvidersManager;
 import org.orekit.data.DirectoryCrawler;
 
 import java.io.*;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public final class FileUtil {
@@ -29,12 +33,36 @@ public final class FileUtil {
         }
     }
 
-    // https://www.orekit.org/site-orekit-11.3.1/data/default-configuration.html
-    public static DataProvidersManager getManagerWithLoadedData() throws URISyntaxException {
+    /**
+     * Load manager data as per the API's documentation
+     * https://www.orekit.org/site-orekit-11.3.1/data/default-configuration.html
+     */
+    public static void loadManagerWithLoadedData() {
         ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-        File orekitData = new File(classLoader.getResource("orekit-data").toURI());
-        DataProvidersManager manager = DataContext.getDefault().getDataProvidersManager();
-        manager.addProvider(new DirectoryCrawler(orekitData));
-        return manager;
+        final URL url = classLoader.getResource("orekit-data");
+        if (null != url) {
+            try {
+                File orekitData = new File(url.toURI());
+                DataProvidersManager manager = DataContext.getDefault().getDataProvidersManager();
+                manager.addProvider(new DirectoryCrawler(orekitData));
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public static InputData parseResourceToInputData(String fileName) {
+        InputData retVal = new InputData();
+        final String proba;
+        try {
+            proba = getResourceFileAsString(fileName);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        if (null != proba) {
+            final List<String> probaList = Arrays.asList(proba.split("\n"));
+            retVal.setValsFromList(probaList);
+        }
+        return retVal;
     }
 }

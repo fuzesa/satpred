@@ -1,12 +1,9 @@
 package edu.utcn.ipprrg.proc;
 
-import org.orekit.propagation.analytical.tle.TLE;
-
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 
 /**
- * Custom TLE Class when parsing incoming text
  * Format taken from NORAD specification
  * Source: https://celestrak.org/NORAD/documentation/tle-fmt.php
  *
@@ -21,28 +18,24 @@ import java.util.Optional;
  *
  * NOAA 14
  * 1 23455U 94089A   97320.90946019  .00000140  00000-0  10191-3 0  2621
- * 2 23455  99.0090 272.6745 0008546 223.1686 136.8816 14.11711747148495
+ * 2 23455  99.0090 272.6745 0008546 223.1686 136.8816 14.11711747148495 
  */
-public class CustomTLE {
+public class InputData {
     private String line0;
     private String line1;
     private String line2;
 
-    public CustomTLE() {
+    public InputData() {
     }
 
-    public CustomTLE(String line0, String line1, String lin2) {
+    public InputData(String line0, String line1, String line2) {
         this.line0 = line0;
         this.line1 = line1;
-        this.line2 = lin2;
+        this.line2 = line2;
     }
 
-    public CustomTLE(List<String> input) {
-        if (input.size() == 3) {
-            this.line0 = input.get(0);
-            this.line1 = input.get(1);
-            this.line2 = input.get(2);
-        }
+    public InputData(List<String> input) {
+        setValsFromList(input);
     }
 
     public String getLine0() {
@@ -69,15 +62,28 @@ public class CustomTLE {
         this.line2 = line2;
     }
 
-    public Optional<TLE> getTLE() {
-        if (TLE.isFormatOK(this.line1, this.line2)) {
-            return Optional.of(new TLE(this.line1, this.line2));
+    public void setValsFromList(List<String> input) {
+        if (3 == input.size()) {
+            this.line0 = input.get(0);
+            this.line1 = input.get(1);
+            this.line2 = input.get(2);
         }
-        return Optional.empty();
+        if (2 == input.size()) {
+            this.line1 = input.get(0);
+            this.line2 = input.get(1);
+        }
     }
 
     @Override
-    public String toString() {
-        return "CustomTLE{" + "line0='" + line0 + '\'' + ", line1='" + line1 + '\'' + ", lin2='" + line2 + '\'' + '}';
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        InputData inputData = (InputData) o;
+        return Objects.equals(line0, inputData.line0) && Objects.equals(line1, inputData.line1) && Objects.equals(line2, inputData.line2);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(line0, line1, line2);
     }
 }

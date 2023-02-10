@@ -1,25 +1,23 @@
 package edu.utcn.ipprrg.proc;
 
+import edu.utcn.ipprrg.util.TLEUtil;
 import org.hipparchus.util.FastMath;
-import org.orekit.frames.Frame;
-import org.orekit.frames.FramesFactory;
 import org.orekit.orbits.KeplerianOrbit;
 import org.orekit.orbits.Orbit;
 import org.orekit.orbits.PositionAngle;
 import org.orekit.propagation.SpacecraftState;
 import org.orekit.propagation.analytical.KeplerianPropagator;
+import org.orekit.propagation.analytical.tle.TLE;
 import org.orekit.time.AbsoluteDate;
-import org.orekit.time.TimeScale;
-import org.orekit.time.TimeScalesFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static edu.utcn.ipprrg.util.Constants.J2000_FRAME;
+import static edu.utcn.ipprrg.util.Constants.MU;
+
 public class Position {
-    private static final TimeScale utc = TimeScalesFactory.getUTC();       // UTC timescale, although it should be a global constant, not just to this class
-    private static final Frame inertialFrame = FramesFactory.getEME2000(); // EME2000 inertial frame
-    private static double mu = 3.986004415e+14;                            // μ - Central attraction coefficient, standard gravitational parameter for planet Earth
     private AbsoluteDate initialDate;
     private double duration = 600.;
     private double stepT = 60.;
@@ -31,6 +29,16 @@ public class Position {
     private double meanAnomaly;
 
     public Position() {
+    }
+
+    public Position(AbsoluteDate initialDate, TLE tle) {
+        this.initialDate = initialDate;
+        this.semiMajorAxis = TLEUtil.getSemiMajorAxis(tle.getMeanMotion());
+        this.eccentricity = tle.getE();
+        this.inclination = tle.getI();
+        this.perigeeArgument = tle.getPerigeeArgument();
+        this.rightAscensionOfAscendingNode = tle.getRaan();
+        this.meanAnomaly = tle.getMeanAnomaly();
     }
 
     public Position(AbsoluteDate initialDate, double semiMajorAxis, double eccentricity, double inclination, double perigeeArgument, double rightAscensionOfAscendingNode, double meanAnomaly) {
@@ -53,14 +61,6 @@ public class Position {
         this.perigeeArgument = perigeeArgument;
         this.rightAscensionOfAscendingNode = rightAscensionOfAscendingNode;
         this.meanAnomaly = meanAnomaly;
-    }
-
-    public static double getMu() {
-        return mu;
-    }
-
-    public static void setMu(double mu) {
-        Position.mu = mu;
     }
 
     public AbsoluteDate getInitialDate() {
@@ -136,9 +136,7 @@ public class Position {
     }
 
     public String getState() {
-        final Orbit keplerianOrbit = new KeplerianOrbit(this.semiMajorAxis, this.eccentricity, this.inclination,
-                this.perigeeArgument, this.rightAscensionOfAscendingNode, this.meanAnomaly, PositionAngle.MEAN,
-                inertialFrame, initialDate, mu);
+        final Orbit keplerianOrbit = new KeplerianOrbit(this.semiMajorAxis, this.eccentricity, this.inclination, this.perigeeArgument, this.rightAscensionOfAscendingNode, this.meanAnomaly, PositionAngle.MEAN, J2000_FRAME, initialDate, MU);
         final KeplerianPropagator kepler = new KeplerianPropagator(keplerianOrbit);
         final SpacecraftState currentState = kepler.propagate(initialDate);
         return String.format(Locale.US, "%s %s%n", currentState.getDate(), currentState.getOrbit());
@@ -146,15 +144,15 @@ public class Position {
 
     public List<String> getStateList() {
         // Some default params
-        double a = 24396159;                                    // semi major axis in meters
-        double e = 0.72831215;                                  // eccentricity
-        double i = FastMath.toRadians(7);                    // inclination
-        double omega = FastMath.toRadians(180);              // perigee argument
-        double raan = FastMath.toRadians(261);               // right ascension of ascending node
-        double lM = 0;                                          // mean anomaly
+        double a = 24396159;                       // semi major axis in meters
+        double e = 0.72831215;                     // eccentricity
+        double i = FastMath.toRadians(7);       // inclination
+        double omega = FastMath.toRadians(180); // perigee argument
+        double raan = FastMath.toRadians(261);  // right ascension of ascending node
+        double lM = 0;                             // mean anomaly
 
         // Initial Keplerian Orbit
-        final Orbit initialOrbit = new KeplerianOrbit(a, e, i, omega, raan, lM, PositionAngle.MEAN, inertialFrame, initialDate, mu);
+        final Orbit initialOrbit = new KeplerianOrbit(a, e, i, omega, raan, lM, PositionAngle.MEAN, J2000_FRAME, initialDate, MU);
 
         // Propagator for determining motion
         final KeplerianPropagator kepler = new KeplerianPropagator(initialOrbit);
