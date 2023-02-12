@@ -17,14 +17,14 @@ dependencies {
 }
 
 application {
-    mainClass = 'edu.utcn.ipprrg.Main'
+    mainClass = 'edu.utcn.ipprrg.satpred.Main'
 }
 
 jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     manifest {
-        attributes 'Main-Class': 'edu.utcn.ipprrg.Main'
+        attributes 'Main-Class': 'edu.utcn.ipprrg.satpred.Main'
     }
 
     from {

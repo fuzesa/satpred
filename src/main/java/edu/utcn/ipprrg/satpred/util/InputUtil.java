@@ -1,8 +1,8 @@
-package edu.utcn.ipprrg.util;
+package edu.utcn.ipprrg.satpred.util;
 
-import edu.utcn.ipprrg.proc.InputLocation;
-import edu.utcn.ipprrg.proc.InputLocationTimestamps;
-import edu.utcn.ipprrg.proc.InputTimestamp;
+import edu.utcn.ipprrg.satpred.model.InputLocation;
+import edu.utcn.ipprrg.satpred.model.InputLocationTimestamps;
+import edu.utcn.ipprrg.satpred.model.InputTimestamp;
 import org.hipparchus.util.FastMath;
 import org.orekit.bodies.GeodeticPoint;
 import org.orekit.time.AbsoluteDate;
@@ -10,8 +10,6 @@ import org.orekit.time.AbsoluteDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static edu.utcn.ipprrg.util.Constants.UTC_TIMESCALE;
 
 public final class InputUtil {
     private static final String DELIMITER = ",";
@@ -64,6 +62,6 @@ public final class InputUtil {
         return new AbsoluteDate(
                 inputTimestamp.getYear(), inputTimestamp.getMonth(), inputTimestamp.getDay(),
                 inputTimestamp.getHour(), inputTimestamp.getMinutes(), inputTimestamp.getSeconds(),
-                UTC_TIMESCALE);
+                Constants.UTC_TIMESCALE);
     }
 }

@@ -1,4 +1,4 @@
-package edu.utcn.ipprrg.proc;
+package edu.utcn.ipprrg.satpred.model;
 
 public class InputTimestamp {
     private int year;

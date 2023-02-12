@@ -1,7 +1,10 @@
-package edu.utcn.ipprrg.proc;
+package edu.utcn.ipprrg.satpred.service;
 
-import edu.utcn.ipprrg.util.InputUtil;
-import edu.utcn.ipprrg.util.TLEUtil;
+import edu.utcn.ipprrg.satpred.model.InputLocationTimestamps;
+import edu.utcn.ipprrg.satpred.model.RaDecRange;
+import edu.utcn.ipprrg.satpred.util.Constants;
+import edu.utcn.ipprrg.satpred.util.InputUtil;
+import edu.utcn.ipprrg.satpred.util.TLEUtil;
 import org.hipparchus.util.FastMath;
 import org.orekit.bodies.GeodeticPoint;
 import org.orekit.estimation.measurements.AngularRaDec;
@@ -19,42 +22,21 @@ import org.orekit.utils.TimeStampedPVCoordinates;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static edu.utcn.ipprrg.util.Constants.J2000_FRAME;
-import static edu.utcn.ipprrg.util.Constants.PLANET_EARTH_BODY_SHAPE;
+public class RaDecService {
+    private RaDecRange getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
 
-public class Process {
+        // Get the Position / Velocity coords
+        final TimeStampedPVCoordinates timeStampedPVCoordinates = tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
 
-    private final List<String> tleLines;
+        // Get Right Ascension - Declination + Range
 
-    private final List<String> locTSLines;
-
-    private String observatoryName = "";
-
-    public Process(List<String> tleLines, List<String> locTSLines) {
-        this.tleLines = tleLines;
-        this.locTSLines = locTSLines;
-    }
-
-    public Process(List<String> tleLines, List<String> locTSLines, String observatoryName) {
-        this.tleLines = tleLines;
-        this.locTSLines = locTSLines;
-        this.observatoryName = observatoryName;
-    }
-
-    private double[] processOne(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
-
-        // To get the Position / Velocity coords
-        final TimeStampedPVCoordinates timeStampedPVCoordinates = tlePropagator.getPVCoordinates(absoluteDate, J2000_FRAME);
-
-        // 2 - GET RIGHT ASCENSION - DECLINATION
-
-        final TopocentricFrame topocentricFrame = new TopocentricFrame(PLANET_EARTH_BODY_SHAPE, geodeticPoint, observatoryName);
+        final TopocentricFrame topocentricFrame = new TopocentricFrame(Constants.PLANET_EARTH_BODY_SHAPE, geodeticPoint, observatoryName);
 
         final GroundStation groundStation = new GroundStation(topocentricFrame);
 
         final ObservableSatellite observableSatellite = new ObservableSatellite(0);
 
-        final AbsolutePVCoordinates absolutePVCoordinates = new AbsolutePVCoordinates(J2000_FRAME, timeStampedPVCoordinates);
+        final AbsolutePVCoordinates absolutePVCoordinates = new AbsolutePVCoordinates(Constants.J2000_FRAME, timeStampedPVCoordinates);
 
         final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
 
@@ -63,24 +45,26 @@ public class Process {
 
         final SpacecraftState[] spacecraftStates = {spacecraftState};
 
-        final AngularRaDecBuilder angularRaDecBuilder = new AngularRaDecBuilder(null, groundStation, J2000_FRAME, sigma, baseWeight, observableSatellite);
+        final AngularRaDecBuilder angularRaDecBuilder = new AngularRaDecBuilder(null, groundStation, Constants.J2000_FRAME, sigma, baseWeight, observableSatellite);
 
         angularRaDecBuilder.init(absoluteDate, absoluteDate);
 
         final AngularRaDec angularRaDec = angularRaDecBuilder.build(spacecraftStates);
 
+        // convert radians to degrees
         double[] degrees = {
                 FastMath.toDegrees(angularRaDec.getObservedValue()[0]),
                 FastMath.toDegrees(angularRaDec.getObservedValue()[1])
         };
 
-        return new double[]{
+        // return proper object with normalized values
+        return new RaDecRange(
                 (degrees[0] < 0 ? 360 + degrees[0] : degrees[0]),
                 (degrees[1] < 0 ? 360 + degrees[1] : degrees[1])
-        };
+        );
     }
 
-    public List<double[]> getAnglesInNormalizedDegrees() {
+    public List<RaDecRange> getRaDecList(List<String> tleLines, List<String> locTSLines, String observatoryName) {
         final TLE tle = TLEUtil.getTLE(tleLines);
         final InputLocationTimestamps inputLocationTimestamps = InputUtil.parseInputFileToILT(locTSLines);
 
@@ -89,6 +73,10 @@ public class Process {
         final TLEPropagator tlePropagator = TLEPropagator.selectExtrapolator(tle);
         final GeodeticPoint geodeticPoint = InputUtil.ilToGP(inputLocationTimestamps.getInputLocation());
 
-        return inputLocationTimestamps.getInputTimestamps().stream().map(it -> processOne(InputUtil.itToAD(it), tlePropagator, geodeticPoint, this.observatoryName)).collect(Collectors.toList());
+        return inputLocationTimestamps.getInputTimestamps().stream().map(it -> getRaDecRange(InputUtil.itToAD(it), tlePropagator, geodeticPoint, observatoryName)).collect(Collectors.toList());
+    }
+
+    public List<RaDecRange> getRaDecList(List<String> tleLines, List<String> locTSLines) {
+        return getRaDecList(tleLines, locTSLines, "");
     }
 }

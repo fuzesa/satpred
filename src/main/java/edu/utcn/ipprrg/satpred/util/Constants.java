@@ -1,4 +1,4 @@
-package edu.utcn.ipprrg.util;
+package edu.utcn.ipprrg.satpred.util;
 
 import org.orekit.bodies.OneAxisEllipsoid;
 import org.orekit.frames.Frame;

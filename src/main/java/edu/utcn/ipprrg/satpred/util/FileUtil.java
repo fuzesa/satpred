@@ -1,4 +1,4 @@
-package edu.utcn.ipprrg.util;
+package edu.utcn.ipprrg.satpred.util;
 
 import org.orekit.data.DataContext;
 import org.orekit.data.DataProvidersManager;
@@ -6,8 +6,6 @@ import org.orekit.data.DirectoryCrawler;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,8 +16,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class FileUtil {
-    private static final String OREKIT_DIR_NAME = "orekit-data";
-
     private FileUtil() {
     }
 
@@ -39,22 +35,8 @@ public final class FileUtil {
 
     /**
      * Load manager data as per the API's documentation
-     * https://www.orekit.org/site-orekit-11.3.1/data/default-configuration.html
+     * <a href="https://www.orekit.org/site-orekit-11.3.1/data/default-configuration.html">Config</a>
      */
-    public static void loadManagerWithLoadedData() {
-        ClassLoader classLoader = ClassLoader.getSystemClassLoader();
-        final URL url = classLoader.getResource(OREKIT_DIR_NAME);
-        if (null != url) {
-            try {
-                File orekitData = new File(url.toURI());
-                DataProvidersManager manager = DataContext.getDefault().getDataProvidersManager();
-                manager.addProvider(new DirectoryCrawler(orekitData));
-            } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     public static void loadManagerWithLoadedData(String pathToOrekitDir) {
         File orekitData = new File(pathToOrekitDir);
         DataProvidersManager manager = DataContext.getDefault().getDataProvidersManager();
