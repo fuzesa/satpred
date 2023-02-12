@@ -22,7 +22,7 @@ import org.orekit.utils.TimeStampedPVCoordinates;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class RaDecService {
+class RaDecService {
     private RaDecRange getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
 
         // Get the Position / Velocity coords
@@ -74,9 +74,5 @@ public class RaDecService {
         final GeodeticPoint geodeticPoint = InputUtil.ilToGP(inputLocationTimestamps.getInputLocation());
 
         return inputLocationTimestamps.getInputTimestamps().stream().map(it -> getRaDecRange(InputUtil.itToAD(it), tlePropagator, geodeticPoint, observatoryName)).collect(Collectors.toList());
-    }
-
-    public List<RaDecRange> getRaDecList(List<String> tleLines, List<String> locTSLines) {
-        return getRaDecList(tleLines, locTSLines, "");
     }
 }
