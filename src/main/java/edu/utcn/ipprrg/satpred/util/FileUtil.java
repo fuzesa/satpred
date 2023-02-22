@@ -11,7 +11,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,6 +18,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class FileUtil {
+    private static final String OUTPUT_FILE_NAME = "satpred_output.txt";
+
     private FileUtil() {
     }
 
@@ -73,14 +74,13 @@ public final class FileUtil {
     }
 
     public static String writeResultsToFile(List<String> results) {
-        final String fileName = "resfile_" + Instant.now().getEpochSecond() + ".txt";
-        final Path path = Paths.get(fileName);
+        final Path path = Paths.get(OUTPUT_FILE_NAME);
 
         try {
             Files.write(path, results, Charset.defaultCharset());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        return fileName;
+        return OUTPUT_FILE_NAME;
     }
 }
