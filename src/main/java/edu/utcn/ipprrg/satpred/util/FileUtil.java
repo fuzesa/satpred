@@ -24,6 +24,7 @@ public final class FileUtil {
     }
 
     public static List<InputTLE> parseTextFileToInputTLEList(String location) {
+        final TLEValidator validator = new TLEValidator();
         final List<InputTLE> inputTLEList = new ArrayList<>();
         final Path path = Paths.get(location);
         AtomicInteger index = new AtomicInteger();
@@ -36,11 +37,13 @@ public final class FileUtil {
         }
         final List<String> tmpList = new ArrayList<>(3);
         lines.forEach(line -> {
-            tmpList.add(line);
-            if ('2' == line.charAt(0)) {
-                final InputTLE inputTLE = new InputTLE(index.getAndIncrement(), new ArrayList<>(tmpList));
-                inputTLEList.add(inputTLE);
-                tmpList.clear();
+            if (validator.isValid(line)) {
+                tmpList.add(line);
+                if ('2' == line.charAt(0)) {
+                    final InputTLE inputTLE = new InputTLE(index.getAndIncrement(), new ArrayList<>(tmpList));
+                    inputTLEList.add(inputTLE);
+                    tmpList.clear();
+                }
             }
         });
 

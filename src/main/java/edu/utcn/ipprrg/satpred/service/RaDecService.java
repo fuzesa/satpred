@@ -57,10 +57,10 @@ class RaDecService {
                 FastMath.toDegrees(angularRaDec.getObservedValue()[1])
         };
 
-        // return proper object with normalized values
+        // return proper object with normalized value for Right Ascension
         return new RaDecRange(
                 (degrees[0] < 0 ? 360 + degrees[0] : degrees[0]),
-                (degrees[1] < 0 ? 360 + degrees[1] : degrees[1])
+                degrees[1]
         );
     }
 

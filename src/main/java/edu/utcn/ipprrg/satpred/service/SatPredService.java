@@ -11,11 +11,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class SatPredService {
-    private static final String DEFAULT_DATA_DIR = "orekit-data";
+    // TODO: Add as command line arg
+    private static final String DEFAULT_DATA_DIR_PREFIX = "";
+    private static final String DEFAULT_DATA_DIR = DEFAULT_DATA_DIR_PREFIX + "orekit-data";
     private final RaDecService raDecService = new RaDecService();
     private List<InputTLE> inputTLEList;
     private List<String> inputLines;
-    private List<String> outputLines;
     private String observatoryName = "";
 
     public SatPredService() {
@@ -44,6 +45,6 @@ public class SatPredService {
     public String createRaDecEstimatesFile() {
         final List<String> results = inputTLEList.parallelStream().map(inputTLE -> createRaDecEstimatesEntry(inputTLE.getIndex(), inputTLE.getLines())).flatMap(Collection::stream).collect(Collectors.toList());
         final String generatedFileMessage = FileUtil.writeResultsToFile(results);
-        return Constants.FINAL_SUCCESS_MESSAGE + generatedFileMessage + " with " + inputTLEList.size() + " X " + results.size() + " entries";
+        return Constants.FINAL_SUCCESS_MESSAGE + generatedFileMessage + " with " + inputTLEList.size() + " X " + (this.inputLines.size() - 1) + " = " + results.size() + " entries";
     }
 }
