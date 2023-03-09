@@ -7,6 +7,7 @@ import edu.utcn.ipprrg.satpred.util.InputUtil;
 import edu.utcn.ipprrg.satpred.util.TLEUtil;
 import org.hipparchus.util.FastMath;
 import org.orekit.bodies.GeodeticPoint;
+import org.orekit.errors.OrekitException;
 import org.orekit.estimation.measurements.AngularRaDec;
 import org.orekit.estimation.measurements.GroundStation;
 import org.orekit.estimation.measurements.ObservableSatellite;
@@ -25,43 +26,49 @@ import java.util.stream.Collectors;
 class RaDecService {
     private RaDecRange getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
 
-        // Get the Position / Velocity coords
-        final TimeStampedPVCoordinates timeStampedPVCoordinates = tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
+        // TODO: Add error handling for individual internal errors
+        try {
+            // Get the Position / Velocity coords
+            final TimeStampedPVCoordinates timeStampedPVCoordinates = tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
 
-        // Get Right Ascension - Declination + Range
+            // Get Right Ascension - Declination + Range
 
-        final TopocentricFrame topocentricFrame = new TopocentricFrame(Constants.PLANET_EARTH_BODY_SHAPE, geodeticPoint, observatoryName);
+            final TopocentricFrame topocentricFrame = new TopocentricFrame(Constants.PLANET_EARTH_BODY_SHAPE, geodeticPoint, observatoryName);
 
-        final GroundStation groundStation = new GroundStation(topocentricFrame);
+            final GroundStation groundStation = new GroundStation(topocentricFrame);
 
-        final ObservableSatellite observableSatellite = new ObservableSatellite(0);
+            final ObservableSatellite observableSatellite = new ObservableSatellite(0);
 
-        final AbsolutePVCoordinates absolutePVCoordinates = new AbsolutePVCoordinates(Constants.J2000_FRAME, timeStampedPVCoordinates);
+            final AbsolutePVCoordinates absolutePVCoordinates = new AbsolutePVCoordinates(Constants.J2000_FRAME, timeStampedPVCoordinates);
 
-        final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
+            final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
 
-        double[] sigma = {0.1, 0.1};
-        double[] baseWeight = {1, 1};
+            double[] sigma = {0.1, 0.1};
+            double[] baseWeight = {1, 1};
 
-        final SpacecraftState[] spacecraftStates = {spacecraftState};
+            final SpacecraftState[] spacecraftStates = {spacecraftState};
 
-        final AngularRaDecBuilder angularRaDecBuilder = new AngularRaDecBuilder(null, groundStation, Constants.J2000_FRAME, sigma, baseWeight, observableSatellite);
+            final AngularRaDecBuilder angularRaDecBuilder = new AngularRaDecBuilder(null, groundStation, Constants.J2000_FRAME, sigma, baseWeight, observableSatellite);
 
-        angularRaDecBuilder.init(absoluteDate, absoluteDate);
+            angularRaDecBuilder.init(absoluteDate, absoluteDate);
 
-        final AngularRaDec angularRaDec = angularRaDecBuilder.build(spacecraftStates);
+            final AngularRaDec angularRaDec = angularRaDecBuilder.build(spacecraftStates);
 
-        // convert radians to degrees
-        double[] degrees = {
-                FastMath.toDegrees(angularRaDec.getObservedValue()[0]),
-                FastMath.toDegrees(angularRaDec.getObservedValue()[1])
-        };
+            // convert radians to degrees
+            double[] degrees = {
+                    FastMath.toDegrees(angularRaDec.getObservedValue()[0]),
+                    FastMath.toDegrees(angularRaDec.getObservedValue()[1])
+            };
 
-        // return proper object with normalized value for Right Ascension
-        return new RaDecRange(
-                (degrees[0] < 0 ? 360 + degrees[0] : degrees[0]),
-                degrees[1]
-        );
+            // return proper object with normalized value for Right Ascension
+            return new RaDecRange(
+                    (degrees[0] < 0 ? 360 + degrees[0] : degrees[0]),
+                    degrees[1]
+            );
+        } catch (OrekitException e) {
+            System.err.println("OREKIT ERROR: " + absoluteDate.toString() + " >> " + e.getMessage() + " || Resulting RaDec will be [0°, 0°]");
+            return new RaDecRange(0d, 0d);
+        }
     }
 
     public List<RaDecRange> getRaDecList(List<String> tleLines, List<String> locTSLines, String observatoryName) {
