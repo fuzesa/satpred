@@ -1,20 +1,25 @@
 package edu.utcn.ipprrg.satpred.service;
 
+import edu.utcn.ipprrg.satpred.model.ECFCoord;
 import edu.utcn.ipprrg.satpred.model.InputTLE;
+import edu.utcn.ipprrg.satpred.model.RaDecECF;
 import edu.utcn.ipprrg.satpred.model.RaDecRange;
 import edu.utcn.ipprrg.satpred.util.Constants;
 import edu.utcn.ipprrg.satpred.util.FileUtil;
+import edu.utcn.ipprrg.satpred.util.RaDecECFUtil;
 import edu.utcn.ipprrg.satpred.util.RaDecUtil;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class SatPredService {
     // TODO: Add as command line arg
-    private static final String DEFAULT_DATA_DIR_PREFIX = "";
+    private static final String DEFAULT_DATA_DIR_PREFIX = "/home/atis/Projects/Proba/satpred-kit-0.0.4/";
     private static final String DEFAULT_DATA_DIR = DEFAULT_DATA_DIR_PREFIX + "orekit-data";
     private final RaDecService raDecService = new RaDecService();
+    private final RaDecECFService raDecECFService = new RaDecECFService();
     private List<InputTLE> inputTLEList;
     private List<String> inputLines;
     private String observatoryName = "";
@@ -42,8 +47,19 @@ public class SatPredService {
         return RaDecUtil.raDecListToStringList(index, results);
     }
 
+    public List<String> createRaDecEstimatesEntryWithPos(int index, final List<String> tleLines) {
+        final List<RaDecECF> results = raDecECFService.getRaDecList(tleLines, this.inputLines, this.observatoryName);
+        return RaDecECFUtil.raDecECFListToStringList(index, results);
+    }
+
     public String createRaDecEstimatesFile() {
         final List<String> results = inputTLEList.parallelStream().map(inputTLE -> createRaDecEstimatesEntry(inputTLE.getIndex(), inputTLE.getLines())).flatMap(Collection::stream).collect(Collectors.toList());
+        final String generatedFileMessage = FileUtil.writeResultsToFile(results);
+        return Constants.FINAL_SUCCESS_MESSAGE + generatedFileMessage + " with " + inputTLEList.size() + " X " + (this.inputLines.size() - 1) + " = " + results.size() + " entries";
+    }
+
+    public String createRaDecECFEstimatesFile() {
+        final List<String> results = inputTLEList.parallelStream().map(inputTLE -> createRaDecEstimatesEntryWithPos(inputTLE.getIndex(), inputTLE.getLines())).flatMap(Collection::stream).collect(Collectors.toList());
         final String generatedFileMessage = FileUtil.writeResultsToFile(results);
         return Constants.FINAL_SUCCESS_MESSAGE + generatedFileMessage + " with " + inputTLEList.size() + " X " + (this.inputLines.size() - 1) + " = " + results.size() + " entries";
     }

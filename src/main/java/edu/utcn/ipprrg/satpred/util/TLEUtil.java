@@ -15,8 +15,8 @@ public final class TLEUtil {
 
     public static TLE getTLE(List<String> input) {
         // Assumption inputData is valid (has line1 & line2)
-        final String line1 = input.get(1);
-        final String line2 = input.get(2);
+        final String line1 = input.size() == 2 ? input.get(0) : input.get(1);
+        final String line2 = input.size() == 2 ? input.get(1) : input.get(2);
         if (TLE.isFormatOK(line1, line2)) {
             return new TLE(line1, line2);
         } else {

@@ -7,7 +7,8 @@ public class Main {
         if (args.length == 2 || args.length == 3) {
             final SatPredService satPredService = new SatPredService();
             satPredService.parseInput(args);
-            final String result = satPredService.createRaDecEstimatesFile();
+//            final String result = satPredService.createRaDecEstimatesFile();
+            final String result = satPredService.createRaDecECFEstimatesFile();
             System.out.println(result);
         } else {
             System.out.println("Two or Three params are required");

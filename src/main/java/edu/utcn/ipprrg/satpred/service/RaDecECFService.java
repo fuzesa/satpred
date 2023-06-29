@@ -1,10 +1,13 @@
 package edu.utcn.ipprrg.satpred.service;
 
+import edu.utcn.ipprrg.satpred.model.ECFCoord;
 import edu.utcn.ipprrg.satpred.model.InputLocationTimestamps;
+import edu.utcn.ipprrg.satpred.model.RaDecECF;
 import edu.utcn.ipprrg.satpred.model.RaDecRange;
 import edu.utcn.ipprrg.satpred.util.Constants;
 import edu.utcn.ipprrg.satpred.util.InputUtil;
 import edu.utcn.ipprrg.satpred.util.TLEUtil;
+import org.hipparchus.geometry.euclidean.threed.Vector3D;
 import org.hipparchus.util.FastMath;
 import org.orekit.bodies.GeodeticPoint;
 import org.orekit.errors.OrekitException;
@@ -24,11 +27,14 @@ import org.orekit.utils.IERSConventions;
 import org.orekit.utils.PVCoordinates;
 import org.orekit.utils.TimeStampedPVCoordinates;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-class RaDecService {
-    private RaDecRange getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
+public class RaDecECFService {
+    private RaDecECF getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator, GeodeticPoint geodeticPoint, String observatoryName) {
+        Map<RaDecRange, ECFCoord> retMap = new HashMap<>();
 
         // TODO: Add error handling for individual internal errors
         try {
@@ -39,6 +45,8 @@ class RaDecService {
 
             final Transform eciToEcf = Constants.J2000_FRAME.getTransformTo(FramesFactory.getITRF(IERSConventions.IERS_2010, true), absoluteDate);
             final PVCoordinates pvECF = eciToEcf.transformPVCoordinates(timeStampedPVCoordinates);
+            final Vector3D position = pvECF.getPosition();
+            final ECFCoord ecfCoord = new ECFCoord(position.getX(), position.getY(), position.getZ());
 
             // Get Right Ascension - Declination + Range
 
@@ -70,17 +78,21 @@ class RaDecService {
             };
 
             // return proper object with normalized value for Right Ascension
-            return new RaDecRange(
+            final RaDecRange raDecRange = new RaDecRange(
                     (degrees[0] < 0 ? 360 + degrees[0] : degrees[0]),
                     degrees[1]
             );
+            retMap.put(raDecRange, ecfCoord);
         } catch (OrekitException e) {
             System.err.println("OREKIT ERROR: " + absoluteDate.toString() + " >> " + e.getMessage() + " || Resulting RaDec will be [0°, 0°]");
-            return new RaDecRange(0d, 0d);
+            final RaDecRange raDecRange = new RaDecRange(0d, 0d);
+            final ECFCoord ecfCoord = new ECFCoord(0, 0, 0);
+            retMap.put(raDecRange, ecfCoord);
         }
+        return new RaDecECF(retMap);
     }
 
-    public List<RaDecRange> getRaDecList(List<String> tleLines, List<String> locTSLines, String observatoryName) {
+    public List<RaDecECF> getRaDecList(List<String> tleLines, List<String> locTSLines, String observatoryName) {
         final TLE tle = TLEUtil.getTLE(tleLines);
         final InputLocationTimestamps inputLocationTimestamps = InputUtil.parseInputFileToILT(locTSLines);
 
