@@ -61,12 +61,12 @@ class RaDecService {
 
             angularRaDecBuilder.init(absoluteDate, absoluteDate);
 
-            final AngularRaDec angularRaDec = angularRaDecBuilder.build(spacecraftStates);
+            // final AngularRaDec angularRaDec = angularRaDecBuilder.build(spacecraftStates);
 
             // convert radians to degrees
             double[] degrees = {
-                    FastMath.toDegrees(angularRaDec.getObservedValue()[0]),
-                    FastMath.toDegrees(angularRaDec.getObservedValue()[1])
+                    // FastMath.toDegrees(angularRaDec.getObservedValue()[0]),
+                    // FastMath.toDegrees(angularRaDec.getObservedValue()[1])
             };
 
             // return proper object with normalized value for Right Ascension
