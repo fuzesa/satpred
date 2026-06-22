@@ -41,46 +41,44 @@ public class RaDecECFService {
 
     /**
      * Computes the Right Ascension / Declination and ECF position for a single
-     * timestamp. Returns {@code null} (logged) if OREKIT cannot produce a value,
-     * so the caller can skip the row rather than emit fabricated zeros.
+     * timestamp. Throws {@link OrekitException} if OREKIT cannot produce a value
+     * (e.g. an unpropagatable, decayed orbit); the caller decides how to react.
      */
     private RaDecECF getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator,
                                    Frame itrf, AngularRaDecBuilder angularRaDecBuilder) {
-        try {
-            // Position / Velocity in the inertial frame
-            final TimeStampedPVCoordinates timeStampedPVCoordinates =
-                    tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
+        // Position / Velocity in the inertial frame
+        final TimeStampedPVCoordinates timeStampedPVCoordinates =
+                tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
 
-            // ECF position (date-dependent transform must stay per-timestamp)
-            final Transform eciToEcf = Constants.J2000_FRAME.getTransformTo(itrf, absoluteDate);
-            final PVCoordinates pvECF = eciToEcf.transformPVCoordinates(timeStampedPVCoordinates);
-            final Vector3D position = pvECF.getPosition();
-            final ECFCoord ecfCoord = new ECFCoord(position.getX(), position.getY(), position.getZ());
+        // ECF position (date-dependent transform must stay per-timestamp)
+        final Transform eciToEcf = Constants.J2000_FRAME.getTransformTo(itrf, absoluteDate);
+        final PVCoordinates pvECF = eciToEcf.transformPVCoordinates(timeStampedPVCoordinates);
+        final Vector3D position = pvECF.getPosition();
+        final ECFCoord ecfCoord = new ECFCoord(position.getX(), position.getY(), position.getZ());
 
-            // Right Ascension - Declination
-            final AbsolutePVCoordinates absolutePVCoordinates =
-                    new AbsolutePVCoordinates(Constants.J2000_FRAME, timeStampedPVCoordinates);
-            final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
+        // Right Ascension - Declination
+        final AbsolutePVCoordinates absolutePVCoordinates =
+                new AbsolutePVCoordinates(Constants.J2000_FRAME, timeStampedPVCoordinates);
+        final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
 
-            angularRaDecBuilder.init(absoluteDate, absoluteDate);
-            final AngularRaDec angularRaDec = angularRaDecBuilder.build(absoluteDate, new SpacecraftState[]{spacecraftState});
+        angularRaDecBuilder.init(absoluteDate, absoluteDate);
+        final AngularRaDec angularRaDec = angularRaDecBuilder.build(absoluteDate, new SpacecraftState[]{spacecraftState});
 
-            final double rightAscension = FastMath.toDegrees(angularRaDec.getObservedValue()[0]);
-            final double declination = FastMath.toDegrees(angularRaDec.getObservedValue()[1]);
+        final double rightAscension = FastMath.toDegrees(angularRaDec.getObservedValue()[0]);
+        final double declination = FastMath.toDegrees(angularRaDec.getObservedValue()[1]);
 
-            final RaDecRange raDecRange = new RaDecRange(
-                    rightAscension < 0 ? 360 + rightAscension : rightAscension,
-                    declination);
-            return new RaDecECF(raDecRange, ecfCoord);
-        } catch (OrekitException e) {
-            LOG.warning("Skipping timestamp " + absoluteDate + ": " + e.getMessage());
-            return null;
-        }
+        final RaDecRange raDecRange = new RaDecRange(
+                rightAscension < 0 ? 360 + rightAscension : rightAscension,
+                declination);
+        return new RaDecECF(raDecRange, ecfCoord);
     }
 
     /**
-     * Computes one result per timestamp (in order). Entries may be {@code null}
-     * when a particular timestamp failed; callers skip those.
+     * Computes one result per timestamp (in order). If a timestamp fails to
+     * propagate (e.g. a decayed orbit that has gone hyperbolic), the remaining
+     * timestamps for this TLE are skipped and the failure is logged once — such
+     * failures are a property of the orbit, so they would recur for every
+     * timestamp anyway. The returned list therefore holds 0..N results.
      * Per-TLE OREKIT objects (frame, ground station, measurement builder) are
      * created once here and reused across all timestamps for this TLE.
      */
@@ -101,7 +99,14 @@ public class RaDecECFService {
         final List<InputTimestamp> timestamps = inputLocationTimestamps.getInputTimestamps();
         final List<RaDecECF> results = new ArrayList<>(timestamps.size());
         for (final InputTimestamp timestamp : timestamps) {
-            results.add(getRaDecRange(InputUtil.itToAD(timestamp), tlePropagator, itrf, angularRaDecBuilder));
+            try {
+                results.add(getRaDecRange(InputUtil.itToAD(timestamp), tlePropagator, itrf, angularRaDecBuilder));
+            } catch (OrekitException e) {
+                LOG.warning("Skipping satellite " + tle.getSatelliteNumber() + " after "
+                        + results.size() + "/" + timestamps.size()
+                        + " timestamp(s) (remaining skipped): " + e.getMessage());
+                break;
+            }
         }
         return results;
     }
