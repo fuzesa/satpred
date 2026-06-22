@@ -1,37 +1,28 @@
 package edu.utcn.ipprrg.satpred.model;
 
+/**
+ * A single Right Ascension / Declination observation, in degrees.
+ * Right Ascension is normalized to [0, 360); declination is in [-90, 90].
+ */
 public class RaDecRange {
-    // Right Ascension - Declination NORMALIZED <= 0° < value < 360°
-    private Double raDec; // [degrees]
-    // Range NORMALIZED <= 0° < value < 360°
-    private Double range; // [degrees]
+    private final double rightAscension; // [degrees], normalized to [0, 360)
+    private final double declination;    // [degrees], in [-90, 90]
 
-    public RaDecRange() {
+    public RaDecRange(double rightAscension, double declination) {
+        this.rightAscension = rightAscension;
+        this.declination = declination;
     }
 
-    public RaDecRange(Double raDec, Double range) {
-        this.raDec = raDec;
-        this.range = range;
+    public double getRightAscension() {
+        return rightAscension;
     }
 
-    public Double getRaDec() {
-        return raDec;
-    }
-
-    public void setRaDec(Double raDec) {
-        this.raDec = raDec;
-    }
-
-    public Double getRange() {
-        return range;
-    }
-
-    public void setRange(Double range) {
-        this.range = range;
+    public double getDeclination() {
+        return declination;
     }
 
     @Override
     public String toString() {
-        return raDec + "," + range;
+        return rightAscension + "," + declination;
     }
 }

@@ -14,3 +14,7 @@ gradlew*
 
 ### Resources ###
 src/main/resources
+orekit-data/
+benchmark/
+*.log
+data/

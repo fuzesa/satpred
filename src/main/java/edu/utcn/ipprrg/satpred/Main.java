@@ -7,7 +7,6 @@ public class Main {
         if (args.length == 2 || args.length == 3) {
             final SatPredService satPredService = new SatPredService();
             satPredService.parseInput(args);
-//            final String result = satPredService.createRaDecEstimatesFile();
             final String result = satPredService.createRaDecECFEstimatesFile();
             System.out.println(result);
         } else {
@@ -15,6 +14,9 @@ public class Main {
             System.out.println("param 1 - TLE File");
             System.out.println("param 2 - Input Location + Time entries file");
             System.out.println("param 3 - Name of observatory (optional)");
+            System.out.println();
+            System.out.println("The orekit-data directory is taken from the OREKIT_DATA environment");
+            System.out.println("variable, or './orekit-data' relative to the working directory.");
         }
     }
 }

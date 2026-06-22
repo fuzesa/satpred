@@ -1,16 +1,28 @@
 package edu.utcn.ipprrg.satpred.model;
 
-import java.util.Map;
-
+/**
+ * Pairs a Right Ascension / Declination observation with the satellite's
+ * Earth-Centered-Fixed (ECF) position for the same instant.
+ */
 public class RaDecECF {
-    Map<RaDecRange, ECFCoord> entries;
+    private final RaDecRange raDec;
+    private final ECFCoord ecf;
 
-    public RaDecECF(Map<RaDecRange, ECFCoord> entries) {
-        this.entries = entries;
+    public RaDecECF(RaDecRange raDec, ECFCoord ecf) {
+        this.raDec = raDec;
+        this.ecf = ecf;
+    }
+
+    public RaDecRange getRaDec() {
+        return raDec;
+    }
+
+    public ECFCoord getEcf() {
+        return ecf;
     }
 
     @Override
     public String toString() {
-        return entries.keySet().toArray()[0].toString() + "," + entries.values().toArray()[0].toString();
+        return raDec.toString() + "," + ecf.toString();
     }
 }

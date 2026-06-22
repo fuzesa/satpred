@@ -7,7 +7,6 @@ import org.hipparchus.util.FastMath;
 import org.orekit.bodies.GeodeticPoint;
 import org.orekit.time.AbsoluteDate;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,41 +19,41 @@ public final class InputUtil {
     }
 
     public static InputLocation parseStringToIL(String input) {
+        final String[] parts = split(input, NUMBER_OF_PARAMS_FOR_LOCATION, "location (latitude,longitude,altitude)");
         final InputLocation inputLocation = new InputLocation();
-        final List<String> splitUp = Arrays.asList(input.split(DELIMITER));
-        if (splitUp.size() == NUMBER_OF_PARAMS_FOR_LOCATION) {
-            inputLocation.setLatitude(Double.parseDouble(splitUp.get(0)));
-            inputLocation.setLongitude(Double.parseDouble(splitUp.get(1)));
-            inputLocation.setAltitude(Double.parseDouble(splitUp.get(2)));
-        }
+        inputLocation.setLatitude(parseDouble(parts[0], "latitude", input));
+        inputLocation.setLongitude(parseDouble(parts[1], "longitude", input));
+        inputLocation.setAltitude(parseDouble(parts[2], "altitude", input));
         return inputLocation;
     }
 
     public static InputTimestamp parseStringToIT(String input) {
+        final String[] parts = split(input, NUMBER_OF_PARAMS_FOR_TIMESTAMP, "timestamp (year,month,day,hour,minutes,seconds)");
         final InputTimestamp inputTimestamp = new InputTimestamp();
-        final List<String> splitUp = Arrays.asList(input.split(DELIMITER));
-        if (splitUp.size() == NUMBER_OF_PARAMS_FOR_TIMESTAMP) {
-            inputTimestamp.setYear(Integer.parseInt(splitUp.get(0)));
-            inputTimestamp.setMonth(Integer.parseInt(splitUp.get(1)));
-            inputTimestamp.setDay(Integer.parseInt(splitUp.get(2)));
-            inputTimestamp.setHour(Integer.parseInt(splitUp.get(3)));
-            inputTimestamp.setMinutes(Integer.parseInt(splitUp.get(4)));
-            inputTimestamp.setSeconds(Double.parseDouble(splitUp.get(5)));
-        }
+        inputTimestamp.setYear(parseInt(parts[0], "year", input));
+        inputTimestamp.setMonth(parseInt(parts[1], "month", input));
+        inputTimestamp.setDay(parseInt(parts[2], "day", input));
+        inputTimestamp.setHour(parseInt(parts[3], "hour", input));
+        inputTimestamp.setMinutes(parseInt(parts[4], "minutes", input));
+        inputTimestamp.setSeconds(parseDouble(parts[5], "seconds", input));
         return inputTimestamp;
     }
 
     public static InputLocationTimestamps parseInputFileToILT(List<String> lines) {
+        if (lines == null || lines.isEmpty()) {
+            throw new IllegalArgumentException("Input file is empty: expected a location line followed by timestamp lines");
+        }
         final InputLocation inputLocation = parseStringToIL(lines.get(0));
-        final List<InputTimestamp> inputTimestamps = lines.stream().skip(1).map(InputUtil::parseStringToIT).collect(Collectors.toList());
+        final List<InputTimestamp> inputTimestamps = lines.stream().skip(1)
+                .map(InputUtil::parseStringToIT)
+                .collect(Collectors.toList());
         return new InputLocationTimestamps(inputLocation, inputTimestamps);
     }
 
     public static GeodeticPoint ilToGP(InputLocation inputLocation) {
-        double latitude = FastMath.toRadians(inputLocation.getLatitude());
-        double longitude = FastMath.toRadians(inputLocation.getLongitude());
-        double altitude = inputLocation.getAltitude();
-
+        final double latitude = FastMath.toRadians(inputLocation.getLatitude());
+        final double longitude = FastMath.toRadians(inputLocation.getLongitude());
+        final double altitude = inputLocation.getAltitude();
         return new GeodeticPoint(latitude, longitude, altitude);
     }
 
@@ -63,5 +62,33 @@ public final class InputUtil {
                 inputTimestamp.getYear(), inputTimestamp.getMonth(), inputTimestamp.getDay(),
                 inputTimestamp.getHour(), inputTimestamp.getMinutes(), inputTimestamp.getSeconds(),
                 Constants.UTC_TIMESCALE);
+    }
+
+    private static String[] split(String input, int expected, String what) {
+        if (input == null) {
+            throw new IllegalArgumentException("Missing input line for " + what);
+        }
+        final String[] parts = input.split(DELIMITER, -1);
+        if (parts.length != expected) {
+            throw new IllegalArgumentException("Invalid " + what + ": expected " + expected
+                    + " comma-separated values but got " + parts.length + " >> \"" + input + "\"");
+        }
+        return parts;
+    }
+
+    private static double parseDouble(String value, String field, String line) {
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number for " + field + " (\"" + value + "\") in line: \"" + line + "\"");
+        }
+    }
+
+    private static int parseInt(String value, String field, String line) {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid integer for " + field + " (\"" + value + "\") in line: \"" + line + "\"");
+        }
     }
 }
