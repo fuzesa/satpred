@@ -18,3 +18,4 @@ orekit-data/
 benchmark/
 *.log
 data/
+satpred_output.txt

@@ -63,7 +63,7 @@ public class RaDecECFService {
             final SpacecraftState spacecraftState = new SpacecraftState(absolutePVCoordinates);
 
             angularRaDecBuilder.init(absoluteDate, absoluteDate);
-            final AngularRaDec angularRaDec = angularRaDecBuilder.build(new SpacecraftState[]{spacecraftState});
+            final AngularRaDec angularRaDec = angularRaDecBuilder.build(absoluteDate, new SpacecraftState[]{spacecraftState});
 
             final double rightAscension = FastMath.toDegrees(angularRaDec.getObservedValue()[0]);
             final double declination = FastMath.toDegrees(angularRaDec.getObservedValue()[1]);
