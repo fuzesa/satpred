@@ -7,7 +7,7 @@ position for an observer, from TLE orbital data and a set of timestamps. Built o
 ---
 
 ## Requirements
-- Java 8+ (the project is compiled with `--release 8` and stays Java 8 compatible)
+- Java 21+ (the project is built on OREKIT 13.x, which requires Java 11+)
 - An `orekit-data` directory (ephemerides, EOP, leap seconds). Get it from
   <https://gitlab.orekit.org/orekit/orekit-data>.
 

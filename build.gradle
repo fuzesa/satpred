@@ -13,14 +13,14 @@ repositories {
 // Keep the project source/byte-compatible with Java 8 even on newer JDKs.
 // --release 8 also validates against the Java 8 API surface (rejects 9+ APIs).
 tasks.withType(JavaCompile) {
-    options.release = 8
+    options.release = 21
 }
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.8.1'
-    implementation 'org.orekit:orekit:12.2.1'
+    implementation 'org.orekit:orekit:13.1.6'
 }
 
 application {
