@@ -40,18 +40,63 @@ public class RaDecECFService {
     private static final double[] BASE_WEIGHT = {1, 1};
 
     /**
+     * Satellite-independent geometry computed once per run and shared (read-only,
+     * thread-safe) across all TLEs: the observation {@link AbsoluteDate}s, the
+     * matching EME2000-&gt;ITRF transforms (which depend only on the date), and
+     * the observer location. Precomputing these avoids recomputing the expensive
+     * frame transforms once per TLE x timestamp.
+     */
+    public static final class ObservationContext {
+        private final List<AbsoluteDate> dates;
+        private final List<Transform> eciToEcf;
+        private final GeodeticPoint geodeticPoint;
+        private final String observatoryName;
+
+        private ObservationContext(List<AbsoluteDate> dates, List<Transform> eciToEcf,
+                                   GeodeticPoint geodeticPoint, String observatoryName) {
+            this.dates = dates;
+            this.eciToEcf = eciToEcf;
+            this.geodeticPoint = geodeticPoint;
+            this.observatoryName = observatoryName;
+        }
+
+        public int size() {
+            return dates.size();
+        }
+    }
+
+    /**
+     * Precomputes the per-run, satellite-independent geometry once. The
+     * EME2000-&gt;ITRF transform at a given instant is identical for every
+     * satellite, so it is computed here (N times) rather than per TLE (N x M).
+     */
+    public ObservationContext buildContext(InputLocationTimestamps inputLocationTimestamps, String observatoryName) {
+        final Frame itrf = FramesFactory.getITRF(IERSConventions.IERS_2010, true);
+        final List<InputTimestamp> timestamps = inputLocationTimestamps.getInputTimestamps();
+        final List<AbsoluteDate> dates = new ArrayList<>(timestamps.size());
+        final List<Transform> eciToEcf = new ArrayList<>(timestamps.size());
+        for (final InputTimestamp timestamp : timestamps) {
+            final AbsoluteDate date = InputUtil.itToAD(timestamp);
+            dates.add(date);
+            eciToEcf.add(Constants.J2000_FRAME.getTransformTo(itrf, date));
+        }
+        final GeodeticPoint geodeticPoint = InputUtil.ilToGP(inputLocationTimestamps.getInputLocation());
+        return new ObservationContext(dates, eciToEcf, geodeticPoint, observatoryName);
+    }
+
+    /**
      * Computes the Right Ascension / Declination and ECF position for a single
-     * timestamp. Throws {@link OrekitException} if OREKIT cannot produce a value
+     * timestamp, using the precomputed (satellite-independent) ECI-&gt;ECF
+     * transform. Throws {@link OrekitException} if OREKIT cannot produce a value
      * (e.g. an unpropagatable, decayed orbit); the caller decides how to react.
      */
-    private RaDecECF getRaDecRange(AbsoluteDate absoluteDate, TLEPropagator tlePropagator,
-                                   Frame itrf, AngularRaDecBuilder angularRaDecBuilder) {
+    private RaDecECF getRaDecRange(AbsoluteDate absoluteDate, Transform eciToEcf,
+                                   TLEPropagator tlePropagator, AngularRaDecBuilder angularRaDecBuilder) {
         // Position / Velocity in the inertial frame
         final TimeStampedPVCoordinates timeStampedPVCoordinates =
                 tlePropagator.getPVCoordinates(absoluteDate, Constants.J2000_FRAME);
 
-        // ECF position (date-dependent transform must stay per-timestamp)
-        final Transform eciToEcf = Constants.J2000_FRAME.getTransformTo(itrf, absoluteDate);
+        // ECF position (transform is shared across TLEs for this date)
         final PVCoordinates pvECF = eciToEcf.transformPVCoordinates(timeStampedPVCoordinates);
         final Vector3D position = pvECF.getPosition();
         final ECFCoord ecfCoord = new ECFCoord(position.getX(), position.getY(), position.getZ());
@@ -74,37 +119,34 @@ public class RaDecECFService {
     }
 
     /**
-     * Computes one result per timestamp (in order). If a timestamp fails to
-     * propagate (e.g. a decayed orbit that has gone hyperbolic), the remaining
-     * timestamps for this TLE are skipped and the failure is logged once — such
-     * failures are a property of the orbit, so they would recur for every
-     * timestamp anyway. The returned list therefore holds 0..N results.
-     * Per-TLE OREKIT objects (frame, ground station, measurement builder) are
-     * created once here and reused across all timestamps for this TLE.
+     * Computes one result per timestamp (in order) for a single TLE, reusing the
+     * shared {@link ObservationContext}. If a timestamp fails to propagate (e.g.
+     * a decayed orbit that has gone hyperbolic), the remaining timestamps for
+     * this TLE are skipped and the failure is logged once — such failures are a
+     * property of the orbit, so they would recur for every timestamp anyway.
+     * The returned list therefore holds 0..N results. The TLE propagator and the
+     * (stateful) measurement builder are created per TLE for thread safety.
      */
-    public List<RaDecECF> getRaDecList(List<String> tleLines, InputLocationTimestamps inputLocationTimestamps,
-                                       String observatoryName) {
+    public List<RaDecECF> getRaDecList(List<String> tleLines, ObservationContext context) {
         final TLE tle = TLEUtil.getTLE(tleLines);
         final TLEPropagator tlePropagator = TLEPropagator.selectExtrapolator(tle);
-        final GeodeticPoint geodeticPoint = InputUtil.ilToGP(inputLocationTimestamps.getInputLocation());
 
-        final Frame itrf = FramesFactory.getITRF(IERSConventions.IERS_2010, true);
         final TopocentricFrame topocentricFrame =
-                new TopocentricFrame(Constants.PLANET_EARTH_BODY_SHAPE, geodeticPoint, observatoryName);
+                new TopocentricFrame(Constants.PLANET_EARTH_BODY_SHAPE, context.geodeticPoint, context.observatoryName);
         final GroundStation groundStation = new GroundStation(topocentricFrame);
         final ObservableSatellite observableSatellite = new ObservableSatellite(0);
         final AngularRaDecBuilder angularRaDecBuilder = new AngularRaDecBuilder(
                 null, groundStation, Constants.J2000_FRAME, SIGMA, BASE_WEIGHT, observableSatellite);
 
-        final List<InputTimestamp> timestamps = inputLocationTimestamps.getInputTimestamps();
-        final List<RaDecECF> results = new ArrayList<>(timestamps.size());
-        for (final InputTimestamp timestamp : timestamps) {
+        final int n = context.size();
+        final List<RaDecECF> results = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            final AbsoluteDate date = context.dates.get(i);
             try {
-                results.add(getRaDecRange(InputUtil.itToAD(timestamp), tlePropagator, itrf, angularRaDecBuilder));
+                results.add(getRaDecRange(date, context.eciToEcf.get(i), tlePropagator, angularRaDecBuilder));
             } catch (OrekitException e) {
                 LOG.warning("Skipping satellite " + tle.getSatelliteNumber() + " after "
-                        + results.size() + "/" + timestamps.size()
-                        + " timestamp(s) (remaining skipped): " + e.getMessage());
+                        + results.size() + "/" + n + " timestamp(s) (remaining skipped): " + e.getMessage());
                 break;
             }
         }

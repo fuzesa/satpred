@@ -49,10 +49,9 @@ public class SatPredService {
         }
     }
 
-    private List<String> createRaDecEstimatesEntryWithPos(InputTLE inputTLE) {
+    private List<String> createRaDecEstimatesEntryWithPos(InputTLE inputTLE, RaDecECFService.ObservationContext context) {
         try {
-            final List<RaDecECF> results =
-                    raDecECFService.getRaDecList(inputTLE.getLines(), this.inputLocationTimestamps, this.observatoryName);
+            final List<RaDecECF> results = raDecECFService.getRaDecList(inputTLE.getLines(), context);
             return RaDecECFUtil.raDecECFListToStringList(inputTLE.getIndex(), results);
         } catch (RuntimeException e) {
             LOG.warning("Skipping TLE #" + inputTLE.getIndex() + ": " + e.getMessage());
@@ -69,10 +68,14 @@ public class SatPredService {
     public String createRaDecECFEstimatesFile() {
         final Path outputPath = Paths.get(outputFileName);
         final AtomicLong rowCount = new AtomicLong();
+        // Compute the satellite-independent geometry (dates + ECI->ECF transforms)
+        // once, then share it read-only across all parallel TLE tasks.
+        final RaDecECFService.ObservationContext context =
+                raDecECFService.buildContext(this.inputLocationTimestamps, this.observatoryName);
 
         try (BufferedWriter writer = Files.newBufferedWriter(outputPath)) {
             inputTLEList.parallelStream()
-                    .map(this::createRaDecEstimatesEntryWithPos)
+                    .map(inputTLE -> createRaDecEstimatesEntryWithPos(inputTLE, context))
                     .forEachOrdered(rows -> {
                         try {
                             for (final String row : rows) {

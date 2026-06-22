@@ -27,15 +27,18 @@ public final class FileUtil {
 
     /**
      * Parses a (2- or 3-line) TLE file into a list of {@link InputTLE}.
-     * Blocks that fail OREKIT's TLE format check are logged and skipped, and
-     * crucially do <em>not</em> consume an index, so the surviving indices are
-     * the same as if the bad records had never been in the file.
+     * Each complete entry consumes a catalog position, so a valid TLE keeps the
+     * index of its position in the original file (0-based, counting every entry
+     * including skipped ones). Blocks that fail OREKIT's TLE format check are
+     * logged and skipped, leaving a gap in the index sequence — this keeps the
+     * emitted {@code tleIndex} a 1-to-1 match with the source catalog, so
+     * downstream lookups by index resolve to the correct satellite.
      */
     public static List<InputTLE> parseTextFileToInputTLEList(String location) {
         final TLEValidator validator = new TLEValidator();
         final List<InputTLE> inputTLEList = new ArrayList<>();
         final Path path = Paths.get(location);
-        final AtomicInteger index = new AtomicInteger();
+        final AtomicInteger nextCatalogIndex = new AtomicInteger();
         final AtomicInteger skipped = new AtomicInteger();
         final List<String> tmpList = new ArrayList<>(3);
 
@@ -44,7 +47,7 @@ public final class FileUtil {
                 if (validator.isValid(line)) {
                     tmpList.add(line);
                     if ('2' == line.charAt(0)) {
-                        addIfValidTLE(inputTLEList, tmpList, index, skipped);
+                        addIfValidTLE(inputTLEList, tmpList, nextCatalogIndex, skipped);
                         tmpList.clear();
                     }
                 }
@@ -59,10 +62,13 @@ public final class FileUtil {
     }
 
     private static void addIfValidTLE(List<InputTLE> target, List<String> block,
-                                      AtomicInteger index, AtomicInteger skipped) {
+                                      AtomicInteger nextCatalogIndex, AtomicInteger skipped) {
         if (block.size() < 2) {
             return;
         }
+        // Consume a catalog position for every complete entry, valid or not, so
+        // valid entries retain their original index and skipped ones leave a gap.
+        final int catalogIndex = nextCatalogIndex.getAndIncrement();
         final String line1 = block.size() == 2 ? block.get(0) : block.get(1);
         final String line2 = block.size() == 2 ? block.get(1) : block.get(2);
         boolean ok;
@@ -72,11 +78,12 @@ public final class FileUtil {
             ok = false;
         }
         if (ok) {
-            target.add(new InputTLE(index.getAndIncrement(), new ArrayList<>(block)));
+            target.add(new InputTLE(catalogIndex, new ArrayList<>(block)));
         } else {
             skipped.incrementAndGet();
             final String name = block.size() == 3 ? block.get(0) : line1;
-            LOG.warning("Skipping invalid TLE [" + name.trim() + "]: malformed format line >> " + line1);
+            LOG.warning("Skipping invalid TLE [" + name.trim() + "] at catalog index " + catalogIndex
+                    + ": malformed format line >> " + line1);
         }
     }
 
